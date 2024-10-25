@@ -19,7 +19,7 @@
 #define DEFAULT_FW_VER       "0.0.1"
 #define DEFAULT_SERIAL_NUM   "SN1234567890"
 #define DEFAULT_HW_ID        "HWID"
-#define DEFAULT_IFS          "wlan0"
+#define DEFAULT_IFS          "eno1"
 
 int process_conf_file(char *file);
 void free_conf_file();

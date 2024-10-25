@@ -21,6 +21,7 @@
 #include <time.h>
 #include <errno.h>
 #include <limits.h>
+#include <json-c/json.h>
 
 #include "events_service.h"
 #include "fault.h"
@@ -32,6 +33,147 @@
 extern service_context_t service_ctx;
 
 shm_t *subs_evts;
+
+int parse_single_event_json(struct json_object *event_obj, int event_index) {
+    struct json_object *topic_obj, *source_name_obj, *source_value_obj;
+
+    subs_evts = (shm_t *) create_shared_memory(0);
+    // Ensuring memory is initialised
+    if (subs_evts == NULL || subs_evts->events == NULL || subs_evts->event_data == NULL) {
+        log_error("Error: Unable to create shared memory. Is onvif_notify_server running?");
+        return -1;
+    }
+
+    // Ensure that event_index is within bounds
+    if (event_index < 0 || event_index >= MAX_EVENTS) {
+        log_error("Error: event_index %d is out of bounds", event_index);
+        return -1;
+    }
+
+    // Populate event metadata
+    subs_evts->events[event_index].is_on = 1;
+    log_debug("Event %d is now active (is_on=1)", event_index);
+    subs_evts->events[event_index].e_time = time(NULL);
+
+    // Parsing event data
+    if (json_object_object_get_ex(event_obj, "Topic", &topic_obj)) {
+        const char *topic = json_object_get_string(topic_obj);
+        if (topic) {
+            subs_evts->event_data[event_index].topic= strdup(topic);
+            if (subs_evts->event_data[event_index].topic == NULL) {
+                log_error("Error: strdup failed for topic");
+                return -1;
+            }
+            log_info("Parsed topic for event %d: %s", event_index, topic);
+        } else {
+            log_error("Error: JSON message does not have event topic");
+            return -1;
+        }
+    }
+
+    if (json_object_object_get_ex(event_obj, "Source", &source_name_obj)) {
+        const char *name = json_object_get_string(source_name_obj);
+        if (name) {
+            subs_evts->event_data[event_index].source_name = strdup(name);
+            if (subs_evts->event_data[event_index].source_name == NULL) {
+                log_error("Error: strdup failed for source_name");
+                return -1;
+            }
+            log_info("Parsed source name for event %d: %s", event_index, name);
+        } else {
+            log_error("Error: JSON message does not have source name");
+            return -1;
+        }
+    }
+
+    if (json_object_object_get_ex(event_obj, "Value", &source_value_obj)) {
+        const char *value = json_object_get_string(source_value_obj);
+        if (value) {
+            subs_evts->event_data[event_index].source_value = strdup(value);
+            if (subs_evts->event_data[event_index].source_value == NULL) {
+                log_error("Error: strdup failed for source_value");
+                return -1;
+            }
+            log_info("Parsed source value for event %d: %s", event_index, value);
+        } else {
+            log_error("Error: JSON message does not have source value");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+int parse_multiple_events_json(struct json_object *parsed_json) {
+    struct json_object *events_array, *single_event_obj;
+    size_t count, i;
+
+    // Lock shared memory before continuing
+    // sem_memory_wait();
+
+    // Getting array of parsed json
+    if (json_object_object_get_ex(parsed_json, "events", &events_array)){
+        // Multiple events (is array)
+        count = json_object_array_length(events_array);
+        log_info("Number of events in JSON array: %zu", count);
+
+        if (count > MAX_EVENTS) {
+            log_error("Error: Too many events in JSON (max allowed %d)", MAX_EVENTS);
+            // sem_memory_post(); // Unlocking memory
+            return -1;
+        }
+
+        // Looping though events
+        for (i = 0; i < count; i++) {
+            single_event_obj = json_object_array_get_idx(events_array, i);
+
+            if (!single_event_obj) {
+                log_error("Error: Failed to retrieve event at index %zu", i);
+                // sem_memory_post();
+                return -1;
+            }
+
+            log_info("Parsing event %zu from array...", i);
+
+            // Parse and store
+            if (parse_single_event_json(single_event_obj, i) != 0) {
+                log_error("Error: Failed to parse event at index %zu", i);
+                // sem_memory_post(); 
+                return -1;
+            }
+
+            log_info("Event %zu parsed successfully", i);
+
+            // Set need_sync for all active subscriptions    
+            for (int j = 0; j < MAX_SUBSCRIPTIONS; j++) {
+                if (subs_evts->subscriptions[j].used != SUB_UNUSED) {
+                    subs_evts->subscriptions[j].need_sync = 1;
+                    log_debug("Set need_sync=1 for subscription %d after event %zu", j, i);
+                }
+            }
+        }
+    } else if (json_object_object_get_ex(parsed_json, "event", &single_event_obj)) {
+        // Single event sent
+        log_info("Parsing single event...");
+
+        if (parse_single_event_json(single_event_obj, 0) != 0) {
+            log_debug("Error: Failed to parse and store event");
+            // sem_memory_post();
+            return -1;
+        }
+
+        log_info("Event parsed successfully");
+    } else {
+        log_debug("Error: No 'events' array or 'event' object founf in JSON message");
+        // sem_memory_post();
+        return -1;
+    }
+
+    // sem_memory_post();
+
+    return 0;
+}
+
 
 int events_get_service_capabilities()
 {

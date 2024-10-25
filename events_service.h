@@ -17,6 +17,8 @@
 #ifndef EVENTS_SERVICE_H
 #define EVENTS_SERVICE_H
 
+int parse_single_event_json(struct json_object *event_obj, int event_index);
+int parse_multiple_events_json(struct json_object *parsed_json);
 int events_get_service_capabilities();
 int events_create_pull_point_subscription();
 int events_pull_messages();

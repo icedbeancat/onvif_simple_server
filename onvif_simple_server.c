@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <libgen.h>
+#include <json-c/json.h>
 
 #include "onvif_simple_server.h"
 #include "device_service.h"
@@ -37,7 +38,7 @@
 #include "utils.h"
 #include "log.h"
 
-#define DEFAULT_CONF_FILE "/etc/onvif_simple_server.conf"
+#define DEFAULT_CONF_FILE "/usr/local/etc/onvif_simple_server.conf"
 #define DEFAULT_LOG_FILE "/var/log/onvif_simple_server.log"
 #define DEBUG_FILE "/tmp/onvif_simple_server.debug"
 
@@ -303,6 +304,9 @@ int main(int argc, char ** argv)
         free(conf_file);
         exit(EXIT_FAILURE);
     }
+
+    char *content_type= getenv("CONTENT_TYPE");
+    
     int input_size;
     char *input = (char *) malloc (16 * 1024 * sizeof(char));
     log_debug("Malloc finished,input pointer points to %p",input);
@@ -332,6 +336,49 @@ int main(int argc, char ** argv)
     }
     log_debug("Input:\n%s", input);
     log_debug("Url: %s", prog_name);
+
+    // Processing JSON message
+    log_debug("About to call parse_multiple_events_json");
+    if (content_type != NULL && strcmp(content_type, "application/json")==0) {
+        struct json_object *parsed_json = json_tokener_parse(input);
+        
+        if (parsed_json == NULL) {
+            log_error("Failed to parse input as JSON");
+            fprintf(stdout, "Content-Type: text/plain\r\n\r\n");
+            fprintf(stdout, "Invalid JSON format\n");
+            free(input);
+            fclose(fLog);
+            free(conf_file);
+            exit(EXIT_FAILURE);
+
+            return -1;
+        }
+        
+        if (parse_multiple_events_json(parsed_json) != 0) {
+            fprintf(stdout, "Content-Type: text/plain\r\n\r\n");
+            fprintf(stdout, "Failed to parse and process event\n");
+            log_error("Failed to parse and process event");
+            json_object_put(parsed_json);
+            free(input);
+            fclose(fLog);
+            free(conf_file);
+            exit(EXIT_FAILURE);
+
+            return -1;
+        } else {
+            fprintf(stdout, "Content-Type: text/plain\r\n\r\n");
+            fprintf(stdout, "Event parsed successfully\n");
+            log_info("Event parsed successfully");
+            free(input);
+            fclose(fLog);
+            free(conf_file);
+            exit(EXIT_SUCCESS);
+
+            return -1;
+        }
+        
+        return 0;
+    }
 
     // Warning: init_xml changes the input string
     init_xml(input, input_size);

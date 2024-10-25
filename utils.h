@@ -42,6 +42,12 @@ typedef enum {
 } subscription_type;
 
 typedef struct {
+    char *topic;
+    char *source_name;
+    char *source_value;
+} event_t;
+
+typedef struct {
     int id;
     char reference[CONSUMER_REFERENCE_MAX_SIZE];
     subscription_type used;
@@ -55,9 +61,11 @@ typedef struct {
     unsigned int pull_notify; // Bit mask
 } event_shm_t;
 
+
 typedef struct {
     subscription_shm_t subscriptions[MAX_SUBSCRIPTIONS];
-    event_shm_t events[MAX_EVENTS];
+    event_shm_t events[MAX_EVENTS]; // multiple event metadata
+    event_t event_data[MAX_EVENTS]; // multiple event data
 } shm_t;
 
 void *create_shared_memory(int create);

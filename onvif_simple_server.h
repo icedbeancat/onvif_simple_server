@@ -23,6 +23,8 @@
 #define DAEMON_NO_UMASK0        010 /* Don't do a umask(0) */
 #define DAEMON_MAX_CLOSE       8192 /* Max file descriptors to close if sysconf(_SC_OPEN_MAX) is indeterminate */
 
+#include "utils.h"
+
 typedef struct {
     int enable;
     const char *username;
@@ -78,13 +80,6 @@ typedef struct {
     char *jump_to_rel;
     char *get_presets;
 } ptz_node_t;
-
-typedef struct {
-    char *topic;
-    char *source_name;
-    char *source_value;
-    char *input_file;
-} event_t;
 
 typedef struct {
     int   port;

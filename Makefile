@@ -3,16 +3,21 @@
 OBJECTS_O = onvif_simple_server.o device_service.o media_service.o media2_service.o ptz_service.o events_service.o fault.o conf.o utils.o log.o ezxml_wrapper.o ezxml/ezxml.o
 OBJECTS_N = onvif_notify_server.o conf.o utils.o log.o ezxml_wrapper.o ezxml/ezxml.o
 OBJECTS_W = wsd_simple_server.o utils.o log.o ezxml_wrapper.o ezxml/ezxml.o
+
+INCLUDE = -ffunction-sections -fdata-sections -lrt
+LIBS_O = -ljson-c -lrt
+LIBS_N = -ljson-c -lrt
+
 ifdef HAVE_MBEDTLS
 INCLUDE = -DHAVE_MBEDTLS -Iextras/mbedtls/include -ffunction-sections -fdata-sections -lrt
 LIBS_O = -Wl,--gc-sections extras/mbedtls/library/libmbedcrypto.a -lpthread -lrt
 LIBS_N = -Wl,--gc-sections extras/mbedtls/library/libmbedcrypto.a -lpthread -lrt
 else
-INCLUDE = -Iextras/libtomcrypt/src/headers -ffunction-sections -fdata-sections -lrt
-LIBS_O = -Wl,--gc-sections extras/libtomcrypt/libtomcrypt.a -lpthread -lrt
-LIBS_N = -Wl,--gc-sections extras/libtomcrypt/libtomcrypt.a -lpthread -lrt
+INCLUDE = -I/usr/include -ffunction-sections -fdata-sections -lrt
+LIBS_O = -Wl,--gc-sections -ltomcrypt -lpthread -lrt -ljson-c
+LIBS_N = -Wl,--gc-sections -ltomcrypt -lpthread -lrt -ljson-c
 endif
-LIBS_W = -Wl,--gc-sections
+LIBS_W = -Wl,--gc-sections -ljson-c
 
 ifeq ($(STRIP), )
     STRIP=echo

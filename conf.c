@@ -410,7 +410,6 @@ int process_conf_file(char *file)
                 service_ctx.events[service_ctx.events_num - 1].topic = NULL;
                 service_ctx.events[service_ctx.events_num - 1].source_name = NULL;
                 service_ctx.events[service_ctx.events_num - 1].source_value = NULL;
-                service_ctx.events[service_ctx.events_num - 1].input_file = NULL;
                 service_ctx.events[service_ctx.events_num - 1].topic = (char *) malloc(strlen(value) + 1);
                 strcpy(service_ctx.events[service_ctx.events_num - 1].topic, value);
             }
@@ -423,11 +422,6 @@ int process_conf_file(char *file)
             if (service_ctx.events_enable != EVENTS_NONE) {
                 service_ctx.events[service_ctx.events_num - 1].source_value = (char *) malloc(strlen(value) + 1);
                 strcpy(service_ctx.events[service_ctx.events_num - 1].source_value, value);
-            }
-        } else if (strcasecmp(param, "input_file") == 0) {
-            if (service_ctx.events_enable != EVENTS_NONE) {
-                service_ctx.events[service_ctx.events_num - 1].input_file = (char *) malloc(strlen(value) + 1);
-                strcpy(service_ctx.events[service_ctx.events_num - 1].input_file, value);
             }
         } else {
             log_warn("Unrecognized option: %s", line);
@@ -467,7 +461,6 @@ void free_conf_file()
 
     if (service_ctx.events_enable == 1) {
         for (i = service_ctx.events_num - 1; i >= 0; i--) {
-            if (service_ctx.events[i].input_file != NULL) free(service_ctx.events[i].input_file);
             if (service_ctx.events[i].source_value != NULL) free(service_ctx.events[i].source_value);
             if (service_ctx.events[i].source_name != NULL) free(service_ctx.events[i].source_name);
             if (service_ctx.events[i].topic != NULL) free(service_ctx.events[i].topic);
@@ -523,7 +516,7 @@ void print_conf_help()
     fprintf(stderr, "\tfirmware_ver=x.y.z\n");
     fprintf(stderr, "\thardware_id=AFUS\n");
     fprintf(stderr, "\tserial_num=AFUSY12ABCDE3F456789\n");
-    fprintf(stderr, "\tifs=wlan0\n");
+    fprintf(stderr, "\tifs=eno1\n");
     fprintf(stderr, "\tport=80\n");
     fprintf(stderr, "\tscope=onvif://www.onvif.org/Profile/Streaming\n");
     fprintf(stderr, "\tuser=\n");

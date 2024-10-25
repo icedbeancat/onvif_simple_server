@@ -13,7 +13,7 @@
 CROSS_COMPILE_HOST=""
 
 INSTALL_DIR="_install"
-export HAVE_MBEDTLS=1
+#export HAVE_MBEDTLS=1
 LIGHTTPD=lighttpd-1.4.73
 
 # Don't edit below this line
